@@ -13,7 +13,7 @@ Optimized inference pipelines to handle large-scale 3D models efficiently on GPU
 Leveraged Python, PyTorch, Open3D, Trimesh, and modern AI frameworks for model development and deployment.
 Improved automation of 3D model understanding, reducing manual annotation effort in CAD and manufacturing workflows.
 
-Skills Used
+Skills Used:
 Python
 PyTorch
 Computer Vision

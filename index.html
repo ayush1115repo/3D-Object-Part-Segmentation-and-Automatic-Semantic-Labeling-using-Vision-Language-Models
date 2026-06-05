@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PartField Segmentation Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/static/css/main.css"/>
+</head>
+<body>
+<div class="scanline"></div>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="logo">
+    <div class="logo-hex">
+      <svg viewBox="0 0 32 32" fill="none"><polygon points="16,2 29,9 29,23 16,30 3,23 3,9" stroke="#00f5d4" stroke-width="1.5" fill="rgba(0,245,212,.08)"/><polygon points="16,8 23,12 23,20 16,24 9,20 9,12" stroke="#00f5d4" stroke-width="1" fill="rgba(0,245,212,.04)"/></svg>
+    </div>
+    <div>
+      <div class="logo-title">PartField <span>Studio</span></div>
+      <div class="logo-sub">NVIDIA · ICCV 2025 · Semantic 3D Segmentation</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot" id="geminiDot"></div>
+    <span class="status-label" id="geminiStatus">Gemma 3 4B · Ready</span>
+  </div>
+</header>
+
+<!-- ── MAIN ── -->
+<main>
+
+  <!-- LEFT PANEL -->
+  <aside class="panel panel-left">
+
+    <div class="panel-section">
+      <div class="sec-label">01 · INPUT</div>
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="dz-icon">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M24 4L42 14V34L24 44L6 34V14L24 4Z" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M24 4V44M6 14L42 14M6 34L42 34M15 9L15 39M33 9L33 39" stroke="currentColor" stroke-width="0.5" opacity="0.3"/>
+            <path d="M24 19V29M19 24L24 19L29 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="dz-text">Drop your 3D model</div>
+        <div class="dz-formats">.OBJ · .GLB · .GLTF · .PLY · .STL</div>
+        <input type="file" id="fileInput" accept=".obj,.glb,.gltf,.ply,.stl" hidden/>
+      </div>
+
+      <div class="file-pill" id="filePill" style="display:none">
+        <div class="pill-icon">⬡</div>
+        <div class="pill-info">
+          <div class="pill-name" id="pillName"></div>
+          <div class="pill-size" id="pillSize"></div>
+        </div>
+        <div class="pill-remove" onclick="clearFile()">✕</div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="sec-label">02 · CONFIG</div>
+      <div class="field-row">
+        <label>Object category</label>
+        <input type="text" id="categoryInput" placeholder="chair, car, airplane…"/>
+      </div>
+      <div class="field-row">
+        <label>Target parts <span class="hint" id="partsHint">12</span><span class="hint" id="partsVal" style="display:none">12</span></label>
+        <input type="range" id="partsRange" min="4" max="24" value="12"
+               oninput="document.getElementById('partsHint').textContent=this.value"/>
+      </div>
+      <button class="recommend-btn" id="recommendBtn" onclick="requestRecommend()" title="AI recommends optimal part count based on model">
+        ✦ AI Recommend Parts
+      </button>
+    </div>
+
+    <button class="run-btn" id="runBtn" disabled onclick="startPipeline()">
+      <span>▶ Run Segmentation</span>
+    </button>
+
+    <!-- Pipeline tracker -->
+    <div class="pipeline" id="pipeline" style="display:none">
+      <div class="pip-step" id="pip-upload">
+        <div class="pip-icon">⬡</div>
+        <div class="pip-body">
+          <div class="pip-name">Model Upload</div>
+          <div class="pip-msg" id="pip-upload-msg">—</div>
+        </div>
+      </div>
+      <div class="pip-connector"></div>
+      <div class="pip-step" id="pip-partfield">
+        <div class="pip-icon">⬡</div>
+        <div class="pip-body">
+          <div class="pip-name">PartField Inference</div>
+          <div class="pip-msg" id="pip-partfield-msg">—</div>
+        </div>
+      </div>
+      <div class="pip-connector"></div>
+      <div class="pip-step" id="pip-cluster">
+        <div class="pip-icon">⬡</div>
+        <div class="pip-body">
+          <div class="pip-name">Agglomerative Clustering</div>
+          <div class="pip-msg" id="pip-cluster-msg">—</div>
+        </div>
+      </div>
+      <div class="pip-connector"></div>
+      <div class="pip-step" id="pip-render">
+        <div class="pip-icon">⬡</div>
+        <div class="pip-body">
+          <div class="pip-name">Render Previews</div>
+          <div class="pip-msg" id="pip-render-msg">—</div>
+        </div>
+      </div>
+      <div class="pip-connector"></div>
+      <div class="pip-step" id="pip-gemini">
+        <div class="pip-icon">⬡</div>
+        <div class="pip-body">
+          <div class="pip-name">Gemma 3 4B Labels</div>
+          <div class="pip-msg" id="pip-gemini-msg">—</div>
+        </div>
+      </div>
+      <div class="pip-connector"></div>
+      <div class="pip-step" id="pip-done">
+        <div class="pip-icon">⬡</div>
+        <div class="pip-body">
+          <div class="pip-name">Complete</div>
+          <div class="pip-msg" id="pip-done-msg">—</div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- CENTER VIEWER -->
+  <section class="viewer-wrap">
+
+    <!-- Toolbar -->
+    <div class="toolbar" id="toolbar">
+      <div class="tb-group">
+        <button class="tb-btn active" id="btn-full"   onclick="setViewMode('full')"     title="Full model">⬡ Full</button>
+        <button class="tb-btn"        id="btn-explode" onclick="setViewMode('explode')" title="Explode parts">✦ Explode</button>
+        <button class="tb-btn"        id="btn-isolate" onclick="openIsolateMode()"      title="Isolate part">◎ Isolate</button>
+      </div>
+      <div class="tb-group">
+        <button class="tb-btn" onclick="toggleWireframe()" id="btn-wire"  title="Wireframe">▦ Wire</button>
+        <button class="tb-btn active" onclick="toggleLabels()" id="btn-lbl" title="Labels">Aa Labels</button>
+        <button class="tb-btn" onclick="resetCamera()"                    title="Reset view">⊕ Reset</button>
+      </div>
+      <div class="tb-group">
+        <button class="tb-btn" onclick="exportResult()"  title="Export JSON">↓ Export</button>
+      </div>
+
+      <!-- Explode slider -->
+      <div class="explode-ctrl" id="explodeCtrl" style="display:none">
+        <span>Spread</span>
+        <input type="range" id="explodeSlider" min="0" max="100" value="0"
+               oninput="setExplode(this.value/100)"/>
+        <span id="explodeVal">0%</span>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="threeCanvas"></canvas>
+
+      <!-- Idle -->
+      <div class="overlay-idle" id="overlayIdle">
+        <div class="idle-cube">
+          <div class="face f"></div><div class="face b"></div>
+          <div class="face l"></div><div class="face r"></div>
+          <div class="face t"></div><div class="face bt"></div>
+        </div>
+        <p>Upload a 3D model to begin</p>
+      </div>
+
+      <!-- Loading -->
+      <div class="overlay-load" id="overlayLoad" style="display:none">
+        <div class="load-ring"></div>
+        <div class="load-stage" id="loadStage">Initialising…</div>
+        <div class="load-bar"><div class="load-fill" id="loadFill"></div></div>
+        <div class="load-pct"  id="loadPct">0%</div>
+      </div>
+
+      <!-- DOM label layer -->
+      <div id="labelLayer"></div>
+    </div>
+  </section>
+
+  <!-- RIGHT PANEL -->
+  <aside class="panel panel-right" id="rightPanel">
+    <div class="panel-section" style="flex:1;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+      <div class="sec-label">03 · SEMANTIC LABELS</div>
+
+      <!-- Idle -->
+      <div class="results-idle" id="resultsIdle">
+        <div class="ri-icon">◈</div>
+        <p>Gemma 3 4B (local GPU) will analyse the segmented parts using vision and assign semantic labels.</p>
+      </div>
+
+      <!-- Results -->
+      <div id="resultsArea" style="display:none;flex:1;overflow:hidden;display:flex;flex-direction:column;gap:10px">
+
+        <div class="obj-desc" id="objDesc"></div>
+
+        <div class="results-meta" id="resultsMeta"></div>
+
+        <!-- Search/filter -->
+        <div class="search-row">
+          <input type="text" id="searchParts" placeholder="Search parts…" oninput="filterParts(this.value)"/>
+        </div>
+
+        <div class="parts-list" id="partsList"></div>
+
+        <!-- JSON accordion -->
+        <div class="json-accordion">
+          <div class="ja-header" onclick="toggleJSON()">
+            <span>JSON Output</span><span id="jaArrow">▶</span>
+          </div>
+          <pre id="jaPre" style="display:none"></pre>
+        </div>
+
+      </div>
+    </div>
+  </aside>
+
+</main>
+
+<!-- Isolate modal -->
+<div class="isolate-modal" id="isolateModal" style="display:none">
+  <div class="im-header">
+    <span>Select a part to isolate</span>
+    <button onclick="closeIsolate()">✕</button>
+  </div>
+  <div class="im-grid" id="imGrid"></div>
+</div>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+
+<script src="/static/js/viewer.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+# 3D-Object-Part-Segmentation-and-Automatic-Semantic-Labeling-using-Vision-Language-Models
